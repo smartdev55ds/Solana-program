@@ -58,3 +58,45 @@ pub mod escrow {
         Ok(())
     }
 }
+
+
+#[derive(Accounts)]
+pub struct ForwardToEscrow<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    /// CHECK: PDA for the user
+    #[account(
+        mut,
+        seeds = [b"user_pda", user.key().as_ref()],
+        bump
+    )]
+    pub user_pda: AccountInfo<'info>,
+
+    /// CHECK: Central vault
+    #[account(
+        mut,
+        seeds = [b"escrow_vault"],
+        bump
+    )]
+    pub escrow_vault: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawToUser<'info> {
+    /// CHECK: This is the destination user wallet
+    #[account(mut)]
+    pub user: AccountInfo<'info>,
+
+    /// CHECK: Escrow vault controlled by program
+    #[account(
+        mut,
+        seeds = [b"escrow_vault"],
+        bump
+    )]
+    pub escrow_vault: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
