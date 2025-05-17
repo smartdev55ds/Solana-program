@@ -6,7 +6,7 @@ declare_id!("YOUR_PROGRAM_ID_HERE");
 pub mod escrow {
     use super::*;
 
-    // Move funds from user PDA to Escrow Vault PDA
+    // User funds go from PDA -> Escrow Vault PDA
     pub fn forward_to_escrow(ctx: Context<ForwardToEscrow>, amount: u64) -> Result<()> {
         let pda_seeds = &[
             b"user_pda",
@@ -33,28 +33,28 @@ pub mod escrow {
 
         Ok(())
     }
-}
 
-#[derive(Accounts)]
-pub struct ForwardToEscrow<'info> {
-    #[account(mut)]
-    pub user: Signer<'info>,
+    // Admin sends SOL from Escrow Vault PDA to user's wallet
+    pub fn withdraw_to_user(ctx: Context<WithdrawToUser>, amount: u64) -> Result<()> {
+        let vault_seeds = &[b"escrow_vault", &[ctx.accounts.escrow_vault.bump]];
+        let signer = &[&vault_seeds[..]];
 
-    /// CHECK: User-specific PDA
-    #[account(
-        mut,
-        seeds = [b"user_pda", user.key().as_ref()],
-        bump
-    )]
-    pub user_pda: AccountInfo<'info>,
+        let ix = anchor_lang::solana_program::system_instruction::transfer(
+            &ctx.accounts.escrow_vault.key(),
+            &ctx.accounts.user.key(),
+            amount,
+        );
 
-    /// CHECK: Escrow vault PDA
-    #[account(
-        mut,
-        seeds = [b"escrow_vault"],
-        bump
-    )]
-    pub escrow_vault: AccountInfo<'info>,
+        anchor_lang::solana_program::program::invoke_signed(
+            &ix,
+            &[
+                ctx.accounts.escrow_vault.to_account_info(),
+                ctx.accounts.user.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+            signer,
+        )?;
 
-    pub system_program: Program<'info, System>,
+        Ok(())
+    }
 }
